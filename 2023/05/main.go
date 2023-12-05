@@ -46,7 +46,7 @@ func ExtractRule(line *string) Rule {
 	return Rule{uint64(dst), uint64(src), uint64(len)}
 }
 
-func GetValue(v uint64, rs []Rule) uint64 {
+func GetValueSrc(v uint64, rs []Rule) uint64 {
 	for _, r := range rs {
 		if r.src <= v && v <= r.src+r.len {
 			return r.dst + (v - r.src)
@@ -55,17 +55,39 @@ func GetValue(v uint64, rs []Rule) uint64 {
 	return v
 }
 
+func GetValueDst(v uint64, rs []Rule) uint64 {
+	for _, r := range rs {
+		if r.dst <= v && v <= r.dst+r.len {
+			return r.src + (v - r.dst)
+		}
+	}
+	return v
+}
+
 func DetermineLocation(seed uint64, rules map[string][]Rule) uint64 {
-	soil := GetValue(seed, rules["seed-to-soil"])
-	fertilizer := GetValue(soil, rules["soil-to-fertilizer"])
-	water := GetValue(fertilizer, rules["fertilizer-to-water"])
-	light := GetValue(water, rules["water-to-light"])
-	temperature := GetValue(light, rules["light-to-temperature"])
-	humidity := GetValue(temperature, rules["temperature-to-humidity"])
-	location := GetValue(humidity, rules["humidity-to-location"])
+	soil := GetValueSrc(seed, rules["seed-to-soil"])
+	fertilizer := GetValueSrc(soil, rules["soil-to-fertilizer"])
+	water := GetValueSrc(fertilizer, rules["fertilizer-to-water"])
+	light := GetValueSrc(water, rules["water-to-light"])
+	temperature := GetValueSrc(light, rules["light-to-temperature"])
+	humidity := GetValueSrc(temperature, rules["temperature-to-humidity"])
+	location := GetValueSrc(humidity, rules["humidity-to-location"])
 	//fmt.Printf("seed<%d> soil<%d> fertilizer<%d> water<%d> light<%d> temperature<%d> humidity<%d> location<%d>\n",
 	//	seed, soil, fertilizer, water, light, temperature, humidity, location)
 	return location
+}
+
+func DetermineSeed(location uint64, rules map[string][]Rule) uint64 {
+	humidity := GetValueDst(location, rules["humidity-to-location"])
+	temperature := GetValueDst(humidity, rules["temperature-to-humidity"])
+	light := GetValueDst(temperature, rules["light-to-temperature"])
+	water := GetValueDst(light, rules["water-to-light"])
+	fertilizer := GetValueDst(water, rules["fertilizer-to-water"])
+	soil := GetValueDst(fertilizer, rules["soil-to-fertilizer"])
+	seed := GetValueDst(soil, rules["seed-to-soil"])
+	//fmt.Printf("location<%d> humidity<%d> temperature<%d> light<%d> water<%d> fertilizer<%d> soil<%d> seed<%d>\n",
+	//	location, humidity, temperature, light, water, fertilizer, soil, seed)
+	return seed
 }
 
 func init() {
@@ -130,14 +152,16 @@ func main() {
 		}
 
 		//fmt.Println("----- PART 2 -----")
-		shortestLocationP2 := ^uint64(0)
-		for i := 0; i < len(seeds); i += 2 {
-			for seed := seeds[i]; seed < (seeds[i] + seeds[i+1]); seed++ {
-				location := DetermineLocation(seed, rules)
-				if location < shortestLocationP2 {
-					shortestLocationP2 = location
+		shortestLocationP2 := uint64(0)
+	loop:
+		for {
+			seed := DetermineSeed(shortestLocationP2, rules)
+			for i := 0; i < len(seeds); i += 2 {
+				if seeds[i] <= seed && seed <= (seeds[i]+seeds[i+1]) {
+					break loop
 				}
 			}
+			shortestLocationP2++
 		}
 
 		fmt.Println("(part 1) shortest location:", shortestLocationP1)
