@@ -84,7 +84,7 @@ func (s *Stack) GetQuantity() int {
 
 func DetermineCardCopies(s *Stack) {
 	for i := range s.cards {
-		for j := i; j < i+s.cards[i].GetMatches(); j++ {
+		for j := i; j < i+s.cards[i].GetMatches() && j < len(s.cards)-1; j++ {
 			s.cards[j+1].quantity += s.cards[i].GetQuantity()
 		}
 	}
